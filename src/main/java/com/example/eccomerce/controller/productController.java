@@ -32,4 +32,16 @@ public class productController {
     public Product getById(@PathVariable String id) {
         return productService.getById(id);
     }
+
+    @GetMapping("/category/{category}")
+    public List<Product> getProductsByCategory(@PathVariable String category) {
+        return productService.getByCategory(category);
+    }
+    // GET /api/products/category/electronics/subcategory/mobile
+    @GetMapping("/category/{category}/subcategory/{subcategory}")
+    public List<Product> getByCategoryAndSubcategory(
+            @PathVariable String category,
+            @PathVariable String subcategory) {
+        return productService.getByCategoryAndSubcategory(category, subcategory);
+    }
 }
