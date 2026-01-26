@@ -9,12 +9,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 @CrossOrigin
-public class productController {
+public class ProductController {
 
     private final ProductService productService;
 
     // Constructor Injection
-    public productController(ProductService productService) {
+    public ProductController(ProductService productService) {
         this.productService = productService;
     }
 
