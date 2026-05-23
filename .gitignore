@@ -30,3 +30,5 @@ application-prod.properties
 
 # Temporary files
 *.tmp
+
+secret.txt
