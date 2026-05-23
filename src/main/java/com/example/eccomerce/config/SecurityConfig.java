@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -21,6 +22,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
     private final JwtFilter jwtFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -35,15 +37,24 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/refresh").permitAll()
                         .requestMatchers("/ping").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                        // Admin only
+                        // ✅ Use regex matcher — works in Spring 6
+                        .requestMatchers(new RegexRequestMatcher(
+                                "/api/products/.+/decrement-stock", "POST"))
+                        .hasRole("SERVICE")
+                        .requestMatchers(new RegexRequestMatcher(
+                                "/api/products/.+/restore-stock", "POST"))
+                        .hasRole("SERVICE")
+                        // Admin only — wildcard comes AFTER specific rules
                         .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/make-admin").hasRole("ADMIN")
                         .requestMatchers("/api/auth/revoke").hasRole("ADMIN")
+
                         // Everything else needs auth
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

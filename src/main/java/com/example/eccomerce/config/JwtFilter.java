@@ -1,6 +1,8 @@
 package com.example.eccomerce.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import jakarta.servlet.FilterChain;
@@ -15,14 +17,34 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@Order(2)
 public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
+
+    @Value("${internal.service.key}")
+    private String internalServiceKey;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // ✅ Check internal service key first
+        String serviceKey = request.getHeader("X-Internal-Service-Key");
+        if (serviceKey != null && serviceKey.equals(internalServiceKey)) {
+            // Valid internal service call — set system authentication
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(
+                            "INTERNAL_SERVICE", null,
+                            List.of(new SimpleGrantedAuthority("ROLE_SERVICE"))
+                    );
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Normal JWT flow for user requests
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

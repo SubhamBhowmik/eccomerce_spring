@@ -3,13 +3,26 @@ package com.example.eccomerce.service.impl;
 import com.example.eccomerce.models.Product;
 import com.example.eccomerce.repository.ProductRepository;
 import com.example.eccomerce.service.ProductService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+
+
+@Slf4j
 @Service
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    @Autowired  // ← add this
+    private MongoTemplate mongoTemplate;
 
     // Constructor Injection
     public ProductServiceImpl(ProductRepository productRepository) {
@@ -64,4 +77,30 @@ public class ProductServiceImpl implements ProductService {
     public void delete(String id) {
         productRepository.deleteById(id);
     }
+
+    @Override
+    public Map<String, Object> restoreStock(String productId, Integer quantity) {
+        Query query = new Query(
+                Criteria.where("_id").is(productId)
+        );
+        Update update = new Update().inc("stock", quantity); // ← increment back
+
+        Product result = mongoTemplate.findAndModify(
+                query, update,
+                FindAndModifyOptions.options().returnNew(true),
+                Product.class
+        );
+
+        if (result == null) {
+            return Map.of("error", "PRODUCT_NOT_FOUND");
+        }
+
+        log.info("Stock restored: {} | new stock: {}", productId, result.getStock());
+        return Map.of(
+                "message", "Stock restored",
+                "newStock", result.getStock()
+        );
+    }
+
+
 }

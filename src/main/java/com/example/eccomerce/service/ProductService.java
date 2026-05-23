@@ -3,6 +3,7 @@ package com.example.eccomerce.service;
 import com.example.eccomerce.models.Product;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ProductService {
     Product create(Product product);
@@ -18,4 +19,7 @@ public interface ProductService {
     Product update(String id, Product product);
 
     void delete(String id);
+
+    Map<String, Object> restoreStock(String productId, Integer quantity);
+
 }
