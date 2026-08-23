@@ -174,4 +174,45 @@ public class AuthController {
         }
     }
 
+    // ─── RESET PASSWORD (Forgot Password) ──────────────────────────
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String email       = body.get("email");
+        String enteredOtp  = body.get("otp");
+        String newPassword = body.get("newPassword");
+
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+        if (enteredOtp == null || enteredOtp.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "OTP is required"));
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
+        }
+
+        try {
+            // Verify OTP from Redis (one-time use)
+            otpService.verifyOtp(email, enteredOtp);
+
+            // Find user and update password
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+
+            // Revoke all existing refresh tokens for security
+            refreshTokenRepository.deleteByUserId(user.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Password reset successfully. Please login with your new password."
+            ));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
 }
